@@ -1,16 +1,42 @@
-"use client"
-import React from 'react'
-import {Box,Typography} from '@mui/material'
-import Protected from '@/components/Protected'
+"use client";
+import Link from "next/link";
+import { Box, Button, Typography } from "@mui/material";
+import { createDocument } from "@/lib/createDocument";
+import { useRouter } from "next/navigation";
 
-const page = () => {
+export default function DashboardHome() {
+  const router = useRouter();
+  const handleCreateDocument = async () => {
+    const newDoc = await createDocument();
+    console.log(newDoc);
+
+    router.push(`/editor/${newDoc.documentId}`);
+  };
+
   return (
-    <Protected>
-    <Box p={3}>
-      <Typography variant="h5">Dashboard</Typography>
-    </Box>
-    </Protected>
-  )
-}
+    <Box
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      minHeight="100vh"
+      p={4}
+    >
+      <Box textAlign="center" maxWidth={600}>
+        <Typography variant="h4" gutterBottom>
+          No document selected
+        </Typography>
+        <Typography color="text.secondary" mb={3}>
+          Select a document from the sidebar or create a new one to get started.
+        </Typography>
 
-export default page
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleCreateDocument}
+        >
+          Create a new document
+        </Button>
+      </Box>
+    </Box>
+  );
+}
