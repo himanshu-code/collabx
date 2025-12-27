@@ -5,7 +5,7 @@ import { getAuth } from "firebase-admin/auth";
 import "@/lib/firebaseAdmin";
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await connectDB();
   const authHeader = req.headers.get("Authorization");
@@ -13,10 +13,11 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
+    const { id } = await params;
     const uid = req.headers.get("x-user-id");
 
     const doc = await Document.findOne({
-      _id: params.id,
+      _id: id,
       ownerId: uid,
     }).lean();
 
