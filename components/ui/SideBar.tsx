@@ -23,7 +23,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 import { createDocument } from "@/lib/createDocument";
 import { getDocuments } from "@/lib/getDocuments";
-import { set } from "mongoose";
 
 interface DocumentInformation {
   createdAt: string;
@@ -215,7 +214,12 @@ const SideBar = ({
             <Typography variant="subtitle1" fontWeight={500}>
               Himanshu’s Workspace
             </Typography>
-            <KeyboardArrowDown fontSize="small" />
+            <IconButton onClick={handleClick}>
+              <KeyboardArrowDown fontSize="small" />
+            </IconButton>
+            <Menu open={open} anchorEl={anchorEl} onClose={handleClose}>
+              <MenuItem onClick={handleLogout}>Logout</MenuItem>
+            </Menu>
           </Box>
           <TextField
             fullWidth
@@ -243,46 +247,22 @@ const SideBar = ({
         </Box>
         <Box py={2} sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
           <List>
-            <ListItemButton
-              sx={{
-                borderRadius: 1,
-                mb: 0.5,
-                "&.Mui-selected": { bgcolor: "action.selected" },
-              }}
-            >
-              {" "}
-              <ListItemText primary="Product RoadMap 2024" />
-            </ListItemButton>
-            <ListItemButton
-              sx={{
-                borderRadius: 1,
-                mb: 0.5,
-                "&.Mui-selected": { bgcolor: "action.selected" },
-              }}
-            >
-              {" "}
-              <ListItemText primary="Design System" />
-            </ListItemButton>
-            <ListItemButton
-              sx={{
-                borderRadius: 1,
-                mb: 0.5,
-                "&.Mui-selected": { bgcolor: "action.selected" },
-              }}
-            >
-              {" "}
-              <ListItemText primary="Meeting Notes" />
-            </ListItemButton>
-            <ListItemButton
-              sx={{
-                borderRadius: 1,
-                mb: 0.5,
-                "&.Mui-selected": { bgcolor: "action.selected" },
-              }}
-            >
-              {" "}
-              <ListItemText primary="Team Guidelines" />
-            </ListItemButton>
+            {documentList.map((doc) => (
+              <ListItemButton
+                key={doc._id}
+                onClick={(e) => {
+                  router.push(`/editor/${doc._id}`);
+                }}
+                sx={{
+                  borderRadius: 1,
+                  mb: 0.5,
+                  "&.Mui-selected": { bgcolor: "action.selected" },
+                }}
+              >
+                {" "}
+                <ListItemText primary={doc.title} />
+              </ListItemButton>
+            ))}
           </List>
         </Box>
         <Box mt={2}>

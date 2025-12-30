@@ -10,11 +10,22 @@ export default function LoginPage() {
 
   async function login() {
     await signInWithPopup(auth, new GoogleAuthProvider());
+    const token = await auth.currentUser?.getIdToken();
+    await fetch("/api/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
     router.push("/");
   }
 
   return (
-    <Box height="100vh" display="flex" alignItems="center" justifyContent="center">
+    <Box
+      height="100vh"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+    >
       <Paper sx={{ width: 420, p: 3 }}>
         <Typography variant="h6" mb={2}>
           Sign in to Syncboard

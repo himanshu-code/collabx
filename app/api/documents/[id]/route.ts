@@ -3,32 +3,39 @@ import { connectDB } from "@/lib/mongo";
 import { Document } from "@/models/Document";
 import { getAuth } from "firebase-admin/auth";
 import "@/lib/firebaseAdmin";
+import mongoose from "mongoose";
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   await connectDB();
-  const authHeader = req.headers.get("Authorization");
+
+  const authHeader = req.headers.get("authorization");
   if (!authHeader) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  let decoded;
   try {
-    const { id } = await params;
-    const uid = req.headers.get("x-user-id");
-
-    const doc = await Document.findOne({
-      _id: id,
-      ownerId: uid,
-    }).lean();
-
-    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-    return NextResponse.json(doc);
-  } catch (error) {
-    console.log("Error fetching document:", error);
-    return NextResponse.json(
-      { error: "Error occurred on server" },
-      { status: 500 }
-    );
+    const token = authHeader.replace("Bearer ", "");
+    decoded = await getAuth().verifyIdToken(token);
+  } catch {
+    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
+
+  const { id } = await params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ error: "Invalid document id" }, { status: 400 });
+  }
+
+  const doc = await Document.findOne({
+    _id: id,
+    ownerId: decoded.uid,
+  }).lean();
+
+  if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  return NextResponse.json(doc);
 }

@@ -27,7 +27,25 @@ import {
   Share,
   History,
 } from "@mui/icons-material";
-const EditorTopBar = () => {
+
+export type EditorCommand =
+  | { type: "bold" }
+  | { type: "italic" }
+  | { type: "heading1" }
+  | { type: "heading2" }
+  | { type: "paragraph" }
+  | { type: "bulletList" }
+  | { type: "numberedList" }
+  | { type: "quote" }
+  | { type: "codeBlock" }
+  | { type: "insertLink" }
+  | { type: "underline" };
+
+const EditorTopBar = ({
+  onCommand,
+}: {
+  onCommand: (cmd: EditorCommand) => void;
+}) => {
   const toggleSx = {
     border: "none",
     borderRadius: 1,
@@ -37,27 +55,53 @@ const EditorTopBar = () => {
   } as const;
 
   const inlineButtons = [
-    { value: "Bold", aria: "bold", icon: <FormatBold /> },
-    { value: "Italic", aria: "italic", icon: <FormatItalic /> },
-    { value: "Underline", aria: "underline", icon: <FormatUnderlined /> },
+    { value: "Bold", aria: "bold", icon: <FormatBold />, command: "bold" },
+    {
+      value: "Italic",
+      aria: "italic",
+      icon: <FormatItalic />,
+      command: "italic",
+    },
+    {
+      value: "Underline",
+      aria: "underline",
+      icon: <FormatUnderlined />,
+      command: "underline",
+    },
   ];
 
   const mediaButtons = [
-    { value: "Link", aria: "link", icon: <Link /> },
-    { value: "Image", aria: "image", icon: <Image /> },
-    { value: "Code", aria: "code", icon: <Code /> },
+    { value: "Link", aria: "link", icon: <Link />, command: "insertLink" },
+    { value: "Image", aria: "image", icon: <Image />, command: "image" },
+    { value: "Code", aria: "code", icon: <Code />, command: "codeBlock" },
   ];
 
   const blockButtons = [
-    { value: "Heading1", aria: "heading1", icon: <Title fontSize="small" /> },
-    { value: "Heading2", aria: "heading2", icon: <Title fontSize="inherit" /> },
-    { value: "Bullet list", aria: "bullet list", icon: <FormatListBulleted /> },
+    {
+      value: "Heading1",
+      aria: "heading1",
+      icon: <Title fontSize="small" />,
+      command: "heading1",
+    },
+    {
+      value: "Heading2",
+      aria: "heading2",
+      icon: <Title fontSize="inherit" />,
+      command: "heading2",
+    },
+    {
+      value: "Bullet list",
+      aria: "bullet list",
+      icon: <FormatListBulleted />,
+      command: "bulletList",
+    },
     {
       value: "Numbered list",
       aria: "numbered list",
       icon: <FormatListNumbered />,
+      command: "numberedList",
     },
-    { value: "Quote", aria: "Quote", icon: <FormatQuote /> },
+    { value: "Quote", aria: "Quote", icon: <FormatQuote />, command: "quote" },
   ];
 
   return (
@@ -86,7 +130,14 @@ const EditorTopBar = () => {
           <ToggleButtonGroup size="small" exclusive={false}>
             {inlineButtons.map((b) => (
               <Tooltip key={b.value} title={b.value} arrow>
-                <ToggleButton value={b.value} aria-label={b.aria} sx={toggleSx}>
+                <ToggleButton
+                  value={b.value}
+                  aria-label={b.aria}
+                  sx={toggleSx}
+                  onClick={() =>
+                    onCommand({ type: b.command } as EditorCommand)
+                  }
+                >
                   {b.icon}
                 </ToggleButton>
               </Tooltip>
@@ -105,7 +156,14 @@ const EditorTopBar = () => {
           <ToggleButtonGroup size="small" exclusive>
             {mediaButtons.map((b) => (
               <Tooltip key={b.value} title={b.value} arrow>
-                <ToggleButton value={b.value} aria-label={b.aria} sx={toggleSx}>
+                <ToggleButton
+                  value={b.value}
+                  aria-label={b.aria}
+                  sx={toggleSx}
+                  onClick={() =>
+                    onCommand({ type: b.command } as EditorCommand)
+                  }
+                >
                   {b.icon}
                 </ToggleButton>
               </Tooltip>
@@ -124,7 +182,14 @@ const EditorTopBar = () => {
           <ToggleButtonGroup size="small" exclusive>
             {blockButtons.map((b) => (
               <Tooltip key={b.value} title={b.value} arrow>
-                <ToggleButton value={b.value} aria-label={b.aria} sx={toggleSx}>
+                <ToggleButton
+                  value={b.value}
+                  aria-label={b.aria}
+                  sx={toggleSx}
+                  onClick={() =>
+                    onCommand({ type: b.command } as EditorCommand)
+                  }
+                >
                   {b.icon}
                 </ToggleButton>
               </Tooltip>

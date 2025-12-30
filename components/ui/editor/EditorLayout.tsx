@@ -1,9 +1,20 @@
-import React from "react";
+"use client";
+import { useState } from "react";
 import { Box, Typography } from "@mui/material";
-import EditorTopBar from "./EditorTopBar";
+import EditorTopBar, { EditorCommand } from "./EditorTopBar";
 import EditorBody from "./EditorBody";
 
-const EditorLayout = () => {
+export interface EditorData {
+  createdAt: string;
+  ownerId: string;
+  title: string;
+  updatedAt: string;
+  _id: string;
+  blocks: any[];
+}
+
+const EditorLayout = ({ editorData }: { editorData: EditorData }) => {
+  const [command, setCommand] = useState<EditorCommand | null>(null);
   return (
     <Box
       sx={{
@@ -13,8 +24,11 @@ const EditorLayout = () => {
         bgcolor: "background.paper",
       }}
     >
-      <EditorTopBar />
-      <EditorBody />
+      <EditorTopBar onCommand={setCommand} />
+      <Typography variant="h4" sx={{ px: { xs: 2, md: 4 }, pt: 2, pb: 1 }}>
+        {editorData.title}
+      </Typography>
+      <EditorBody editorData={editorData} command={command} />
     </Box>
   );
 };

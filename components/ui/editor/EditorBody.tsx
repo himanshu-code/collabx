@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Box, Typography } from "@mui/material";
-import { set } from "mongoose";
 import { useIsTouch } from "@/hooks/useIsTouch";
-import { clear } from "console";
+import { type EditorData } from "./EditorLayout";
+import { EditorCommand } from "./EditorTopBar";
 type BlockType =
   | "paragraph"
   | "heading1"
@@ -13,53 +13,128 @@ type BlockType =
   | "quote"
   | "codeBlock";
 
-type Block = {
+export type Block = {
   id: string;
   type: BlockType;
   content: string;
 };
+const BlockInserter = ({ onAdd }: { onAdd: () => void }) => {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        py: 1,
+        opacity: 0.4,
+        cursor: "pointer",
+        "&:hover": { opacity: 1 },
+      }}
+      onClick={onAdd}
+    >
+      <Box
+        sx={{
+          width: 24,
+          height: 24,
+          borderRadius: "50%",
+          border: "1px solid",
+          borderColor: "divider",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 18,
+          lineHeight: 1,
+          userSelect: "none",
+        }}
+      >
+        +
+      </Box>
+    </Box>
+  );
+};
 
-const EditorBlock = ({ block }: { block: Block }) => {
+const EditorBlock = ({
+  block,
+  onChange,
+  onFocus,
+}: {
+  block: Block;
+  onChange: (id: string, content: string) => void;
+  onFocus: (id: string) => void;
+}) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+
+    if (ref.current.innerHTML !== block.content) {
+      ref.current.innerHTML = block.content || "";
+    }
+  }, [block.content, block.type]);
+
   switch (block.type) {
     case "heading1":
       return (
         <Typography
+          ref={ref}
           variant="h3"
           contentEditable
+          data-block-id={block.id}
           suppressContentEditableWarning
-          sx={{ outline: "none", mb: { xs: 2, md: 1 } }}
+          sx={{ outline: "none", mb: { xs: 2, md: 1 }, width: "90%" }}
+          onFocus={() => onFocus(block.id)}
+          onInput={(e) => {
+            const html = e.currentTarget.innerHTML;
+            onChange(block.id, html);
+          }}
         >
-          {block.content}
+          {/**<div dangerouslySetInnerHTML={{ __html: block.content || "" }} />**/}
         </Typography>
       );
     case "heading2":
       return (
         <Typography
+          ref={ref}
           variant="h4"
           contentEditable
+          data-block-id={block.id}
           suppressContentEditableWarning
-          sx={{ outline: "none", mb: { xs: 2, md: 1 } }}
+          onFocus={() => onFocus(block.id)}
+          sx={{ outline: "none", mb: { xs: 2, md: 1 }, width: "90%" }}
+          onInput={(e) => {
+            const html = e.currentTarget.innerHTML;
+            onChange(block.id, html);
+          }}
         >
-          {block.content}
+          {/**<div dangerouslySetInnerHTML={{ __html: block.content || "" }} />**/}
         </Typography>
       );
     case "heading3":
       return (
         <Typography
+          ref={ref}
           variant="h5"
           contentEditable
+          data-block-id={block.id}
           suppressContentEditableWarning
-          sx={{ outline: "none", mb: { xs: 2, md: 1 } }}
+          onFocus={() => onFocus(block.id)}
+          sx={{ outline: "none", mb: { xs: 2, md: 1 }, width: "90%" }}
+          onInput={(e) => {
+            const html = e.currentTarget.innerHTML;
+            onChange(block.id, html);
+          }}
         >
-          {block.content}
+          {/**<div dangerouslySetInnerHTML={{ __html: block.content || "" }} />**/}
         </Typography>
       );
 
     case "quote":
       return (
         <Box
+          ref={ref}
           contentEditable
           suppressContentEditableWarning
+          data-block-id={block.id}
+          onFocus={() => onFocus(block.id)}
           sx={{
             borderLeft: "3px solid",
             borderColor: "divider",
@@ -68,50 +143,77 @@ const EditorBlock = ({ block }: { block: Block }) => {
             fontStyle: "italic",
             mb: 1,
             outline: "none",
+            width: "90%",
+          }}
+          onInput={(e) => {
+            const html = e.currentTarget.innerHTML;
+            onChange(block.id, html);
           }}
         >
-          {block.content}
+          {/**<div dangerouslySetInnerHTML={{ __html: block.content || "" }} />**/}
         </Box>
       );
 
     case "bulletList":
       return (
         <li
+          ref={ref}
           contentEditable
           suppressContentEditableWarning
-          style={{ marginLeft: 20, outline: "none" }}
+          data-block-id={block.id}
+          onFocus={() => onFocus(block.id)}
+          style={{ marginLeft: 20, outline: "none", width: "90%" }}
         >
-          {block.content}
+          {/**<div dangerouslySetInnerHTML={{ __html: block.content || "" }} />**/}
         </li>
       );
 
     case "numberedList":
       return (
         <li
+          ref={ref}
           contentEditable
+          data-block-id={block.id}
           suppressContentEditableWarning
-          style={{ marginLeft: 20, outline: "none", listStyleType: "decimal" }}
+          onFocus={() => onFocus(block.id)}
+          style={{
+            marginLeft: 20,
+            outline: "none",
+            listStyleType: "decimal",
+            width: "90%",
+          }}
         >
-          {block.content}
+          {/**<div dangerouslySetInnerHTML={{ __html: block.content || "" }} />**/}
         </li>
       );
 
     case "paragraph":
       return (
         <Box
+          ref={ref}
           contentEditable
           suppressContentEditableWarning
-          sx={{ outline: "none", mb: { xs: 2, md: 1 } }}
+          onFocus={() => onFocus(block.id)}
+          sx={{ outline: "none", mb: { xs: 2, md: 1 }, width: "90%" }}
+          onInput={(e) => {
+            const html = e.currentTarget.innerHTML
+              .replace(/<div>/g, "<br>")
+              .replace(/<\/div>/g, "")
+              .replace(/<br><br>/g, "<br>");
+            onChange(block.id, html);
+          }}
         >
-          {block.content}
+          {/**<div dangerouslySetInnerHTML={{ __html: block.content || "" }} />**/}
         </Box>
       );
     case "codeBlock":
       return (
         <Box
+          ref={ref}
           component="pre"
           contentEditable
           suppressContentEditableWarning
+          onFocus={() => onFocus(block.id)}
           sx={{
             outline: "none",
             mb: 1,
@@ -120,9 +222,10 @@ const EditorBlock = ({ block }: { block: Block }) => {
             p: 1,
             borderRadius: 1,
             overflowX: "auto",
+            width: "90%",
           }}
         >
-          {block.content}
+          {/**<div dangerouslySetInnerHTML={{ __html: block.content || "" }} />**/}
         </Box>
       );
     default:
@@ -136,12 +239,16 @@ const DraggableBlock = ({
   onDragOver,
   onDrop,
   isTouch,
+  onChange,
+  onFocus,
 }: {
   block: Block;
   onDragStart: (id: string) => void;
   onDragOver: (id: string) => void;
   onDrop: (id: string) => void;
   isTouch: boolean;
+  onChange: (id: string, content: string) => void;
+  onFocus: (id: string) => void;
 }) => {
   const [longPressActive, setLongPressActive] = React.useState(false);
   const longPressTimer = React.useRef<number | null>(null);
@@ -194,22 +301,22 @@ const DraggableBlock = ({
         </Box>
         {/* )} */}
 
-        <EditorBlock block={block} />
+        <EditorBlock block={block} onChange={onChange} onFocus={onFocus} />
       </Box>
     </Box>
   );
 };
 
-const EditorBody = () => {
+const EditorBody = ({
+  editorData,
+  command,
+}: {
+  editorData: EditorData;
+  command: EditorCommand;
+}) => {
   const isTouch = useIsTouch();
-  const [blocks, setBlocks] = React.useState<Block[]>([
-    { id: "1", type: "heading1", content: "Project Overview" },
-    {
-      id: "2",
-      type: "paragraph",
-      content: "This document describes the project goals.",
-    },
-  ]);
+  const [blocks, setBlocks] = React.useState<Block[]>([]);
+  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
 
   const [draggedId, setDraggedId] = React.useState<string | null>(null);
   const handleDragStart = (id: string) => {
@@ -229,6 +336,86 @@ const EditorBody = () => {
     });
     setDraggedId(null);
   };
+  const handleBlockChange = (id: string, content: string) => {
+    setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, content } : b)));
+  };
+  useEffect(() => {
+    if (editorData?.blocks) {
+      setBlocks(editorData.blocks);
+    }
+  }, [editorData]);
+
+  const applyCommand = (cmd: EditorCommand) => {
+    console.log("cmd executed", cmd);
+    if (!activeBlockId) return;
+
+    switch (cmd.type) {
+      case "bold":
+        document.execCommand("bold");
+        return;
+
+      case "italic":
+        document.execCommand("italic");
+        return;
+
+      case "underline":
+        document.execCommand("underline");
+        return;
+
+      // case "codeBlock":
+      //   document.execCommand(
+      //     "insertHTML",
+      //     false,
+      //     `<code>${window.getSelection()?.toString()}</code>`
+      //   );
+      //   return;
+
+      case "insertLink": {
+        const url = prompt("Enter URL");
+        if (url) document.execCommand("createLink", false, url);
+        return;
+      }
+      default:
+        setBlocks((prev) =>
+          prev.map((b) => {
+            if (b.id !== activeBlockId) return b;
+            return { ...b, type: cmd.type as BlockType, content: b.content };
+          })
+        );
+    }
+  };
+
+  const insertBlockAfter = (afterId: string) => {
+    setBlocks((prev) => {
+      const index = prev.findIndex((b) => b.id === afterId);
+      if (index == -1) return prev;
+      const newBlock: Block = {
+        id: crypto.randomUUID(),
+        type: "paragraph",
+        content: "",
+      };
+      const updated = [...prev];
+      updated.splice(index + 1, 0, newBlock);
+      return updated;
+    });
+  };
+  useEffect(() => {
+    if (command) {
+      applyCommand(command);
+    }
+  }, [command]);
+  useEffect(() => {
+    const last = blocks[blocks.length - 1];
+    if (!last) return;
+
+    requestAnimationFrame(() => {
+      const el = document.querySelector(
+        `[data-block-id="${last.id}"]`
+      ) as HTMLElement;
+      el?.focus();
+    });
+  }, [blocks.length]);
+
   return (
     <Box
       sx={{
@@ -254,14 +441,18 @@ const EditorBody = () => {
           Start typing…
         </Typography>
         {blocks.map((block) => (
-          <DraggableBlock
-            key={block.id}
-            block={block}
-            onDragStart={handleDragStart}
-            onDragOver={() => {}}
-            onDrop={handleDrop}
-            isTouch={isTouch}
-          />
+          <React.Fragment key={block.id}>
+            <DraggableBlock
+              block={block}
+              onDragStart={handleDragStart}
+              onDragOver={() => {}}
+              onDrop={handleDrop}
+              isTouch={isTouch}
+              onFocus={setActiveBlockId}
+              onChange={handleBlockChange}
+            />
+            <BlockInserter onAdd={() => insertBlockAfter(block.id)} />
+          </React.Fragment>
         ))}
       </Box>
     </Box>
