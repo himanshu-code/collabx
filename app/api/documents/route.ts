@@ -12,7 +12,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    const decodedToken = await getAuth().verifySessionCookie(sessionCookie, true);
+    const decodedToken = await getAuth().verifySessionCookie(
+      sessionCookie,
+      true
+    );
     const documents = await Document.find({ ownerId: decodedToken.uid })
       .sort({
         updatedAt: -1,
@@ -36,10 +39,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const decodedToken = await getAuth().verifySessionCookie(sessionCookie, true);
+    const decodedToken = await getAuth().verifySessionCookie(
+      sessionCookie,
+      true
+    );
     const doc = await Document.create({
       ownerId: decodedToken.uid,
       blocks: [{ id: "block-1", type: "paragraph", content: "" }],
+      sharedWith: [],
     });
     return NextResponse.json(
       { documentId: doc._id.toString() },

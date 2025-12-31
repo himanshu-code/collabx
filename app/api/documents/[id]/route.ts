@@ -19,7 +19,10 @@ export async function GET(
 
   let decoded;
   try {
-    decoded = await getAuth().verifySessionCookie(sessionCookie, true /** checkRevoked */);
+    decoded = await getAuth().verifySessionCookie(
+      sessionCookie,
+      true /** checkRevoked */
+    );
   } catch {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
@@ -32,7 +35,7 @@ export async function GET(
 
   const doc = await Document.findOne({
     _id: id,
-    ownerId: decoded.uid,
+    $or: [{ ownerId: decoded.uid }, { "sharedWith.userId": decoded.uid }],
   }).lean();
 
   if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -62,7 +65,13 @@ export async function PUT(
     const { id } = await params;
 
     const updated = await Document.findOneAndUpdate(
-      { _id: id, ownerId: decoded.uid },
+      {
+        _id: id,
+        $or: [
+          { ownerId: decoded.uid },
+          { "sharedWith.userId": decoded.uid, "sharedWith.role": "editor" },
+        ],
+      },
       {
         blocks,
         updatedAt: new Date(),

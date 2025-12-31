@@ -57,11 +57,13 @@ const EditorBlock = ({
   onChange,
   onFocus,
   onInsertAfter,
+  onDelete,
 }: {
   block: Block;
   onChange: (id: string, content: string) => void;
   onFocus: (id: string) => void;
   onInsertAfter: (id: string, type: BlockType) => void;
+  onDelete: (id: string) => void;
 }) => {
   const divRef = useRef<HTMLDivElement>(null);
   const liRef = useRef<HTMLLIElement>(null);
@@ -79,6 +81,14 @@ const EditorBlock = ({
   }, [block.id, block.content, block.type]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (
+      e.key === "Backspace" &&
+      ref.current &&
+      ref.current.innerText.trim() === ""
+    ) {
+      e.preventDefault();
+      onDelete(block.id);
+    }
     if (
       e.key === "Enter" &&
       (block.type === "bulletList" || block.type === "numberedList")
@@ -268,6 +278,18 @@ const EditorBody = ({
     pendingFocusId.current = newId;
   };
 
+  const deleteBlock = (id: string) => {
+    setBlocks((prev) => {
+      if (prev.length == 1) return [{ ...prev[0], content: "" }];
+
+      const index = prev.findIndex((b) => b.id === id);
+      const nextFocus = prev[index - 1]?.id || prev[index + 1]?.id || null;
+      pendingFocusId.current = nextFocus;
+
+      return prev.filter((b) => b.id !== id);
+    });
+  };
+
   useEffect(() => {
     if (!command || !activeBlockId) return;
 
@@ -394,13 +416,14 @@ const EditorBody = ({
                         key={item.id}
                         block={item}
                         onDragStart={handleDragStart}
-                        onDragOver={() => { }}
+                        onDragOver={() => {}}
                         onDrop={handleDrop}
                         isTouch={isTouch}
                       >
                         <EditorBlock
                           block={item}
                           onChange={handleBlockChange}
+                          onDelete={deleteBlock}
                           onFocus={(id) => {
                             setActiveBlockId(id);
                             pendingFocusId.current = id;
@@ -419,13 +442,14 @@ const EditorBody = ({
                   <DraggableBlock
                     block={block}
                     onDragStart={handleDragStart}
-                    onDragOver={() => { }}
+                    onDragOver={() => {}}
                     onDrop={handleDrop}
                     isTouch={isTouch}
                   >
                     <EditorBlock
                       block={block}
                       onChange={handleBlockChange}
+                      onDelete={deleteBlock}
                       onFocus={(id) => {
                         setActiveBlockId(id);
                         pendingFocusId.current = id;

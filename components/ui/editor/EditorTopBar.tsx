@@ -43,8 +43,10 @@ export type EditorCommand =
 
 const EditorTopBar = ({
   onCommand,
+  onShareClick,
 }: {
   onCommand: (cmd: EditorCommand) => void;
+  onShareClick: (openShare: boolean) => void;
 }) => {
   const toggleSx = {
     border: "none",
@@ -253,6 +255,7 @@ const EditorTopBar = ({
             startIcon={<Share fontSize="small" />}
             size="small"
             sx={{ textTransform: "none", borderRadius: 2 }}
+            onClick={() => onShareClick(true)}
           >
             Share
           </Button>
