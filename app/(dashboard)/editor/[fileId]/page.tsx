@@ -13,7 +13,7 @@ export default async function EditorPage({
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("__session")?.value;
 
-  const res = await fetch(`http://localhost:3000/api/documents/${fileId}`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/documents/${fileId}`, {
     headers: {
       Cookie: `__session=${sessionCookie}`,
     },
