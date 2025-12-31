@@ -318,15 +318,19 @@ const EditorBody = ({
     try {
       isSavingRef.current = true;
 
-      const token = await user.getIdToken();
       const res = await fetch(`/api/documents/${editorData._id}`, {
         method: "PUT",
         headers: {
           "Content-type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ blocks: blocksToSave }),
       });
+
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+
       if (res.ok) {
         lastSavedRef.current = payload;
       } else {
@@ -390,7 +394,7 @@ const EditorBody = ({
                         key={item.id}
                         block={item}
                         onDragStart={handleDragStart}
-                        onDragOver={() => {}}
+                        onDragOver={() => { }}
                         onDrop={handleDrop}
                         isTouch={isTouch}
                       >
@@ -415,7 +419,7 @@ const EditorBody = ({
                   <DraggableBlock
                     block={block}
                     onDragStart={handleDragStart}
-                    onDragOver={() => {}}
+                    onDragOver={() => { }}
                     onDrop={handleDrop}
                     isTouch={isTouch}
                   >

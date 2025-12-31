@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { connectDB } from "@/lib/mongo";
 import { Document } from "@/models/Document";
 import { getAuth } from "firebase-admin/auth";
@@ -6,13 +7,12 @@ import "@/lib/firebaseAdmin";
 
 export async function GET(req: Request) {
   await connectDB();
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
+  const sessionCookie = (await cookies()).get("__session")?.value;
+  if (!sessionCookie) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    const token = authHeader.replace("Bearer ", "");
-    const decodedToken = await getAuth().verifyIdToken(token);
+    const decodedToken = await getAuth().verifySessionCookie(sessionCookie, true);
     const documents = await Document.find({ ownerId: decodedToken.uid })
       .sort({
         updatedAt: -1,
@@ -30,14 +30,13 @@ export async function GET(req: Request) {
 
 export async function POST(request: Request) {
   await connectDB();
-  const authHeader = request.headers.get("Authorization");
-  if (!authHeader) {
+  const sessionCookie = (await cookies()).get("__session")?.value;
+  if (!sessionCookie) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const token = authHeader.replace("Bearer ", "");
-    const decodedToken = await getAuth().verifyIdToken(token);
+    const decodedToken = await getAuth().verifySessionCookie(sessionCookie, true);
     const doc = await Document.create({
       ownerId: decodedToken.uid,
       blocks: [{ id: "block-1", type: "paragraph", content: "" }],

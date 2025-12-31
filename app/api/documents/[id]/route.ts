@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { connectDB } from "@/lib/mongo";
 import { Document } from "@/models/Document";
 import { getAuth } from "firebase-admin/auth";
@@ -11,15 +12,14 @@ export async function GET(
 ) {
   await connectDB();
 
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader) {
+  const sessionCookie = (await cookies()).get("__session")?.value;
+  if (!sessionCookie) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let decoded;
   try {
-    const token = authHeader.replace("Bearer ", "");
-    decoded = await getAuth().verifyIdToken(token);
+    decoded = await getAuth().verifySessionCookie(sessionCookie, true /** checkRevoked */);
   } catch {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
@@ -45,15 +45,14 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   await connectDB();
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader) {
+  const sessionCookie = (await cookies()).get("__session")?.value;
+  if (!sessionCookie) {
     return NextResponse.json({ error: "UnAuthorized" }, { status: 401 });
   }
 
   let decoded;
   try {
-    const token = authHeader.replace("Bearer ", "");
-    decoded = await getAuth().verifyIdToken(token);
+    decoded = await getAuth().verifySessionCookie(sessionCookie, true);
   } catch {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }

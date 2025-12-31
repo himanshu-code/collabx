@@ -1,14 +1,13 @@
-import { auth } from "@/lib/firebase";
 
 export async function getEditorText(documentId: string) {
-  const token = await auth.currentUser?.getIdToken();
   const res = await fetch(`/api/documents?id=${documentId}`, {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
   });
+
   if (!res.ok) {
+    if (res.status === 401) {
+      window.location.href = "/login";
+    }
     throw new Error("Failed to fetch document text");
   }
   const data = await res.json();

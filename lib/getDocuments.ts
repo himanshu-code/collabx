@@ -1,14 +1,13 @@
-import { auth } from "@/lib/firebase";
 
 export async function getDocuments() {
-  const token = await auth.currentUser?.getIdToken();
   const res = await fetch("/api/documents", {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
   });
+
   if (!res.ok) {
+    if (res.status === 401) {
+      window.location.href = "/login";
+    }
     throw new Error("Failed to fetch documents");
   }
   const data = await res.json();
