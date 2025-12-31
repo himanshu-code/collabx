@@ -39,3 +39,47 @@ export async function GET(
 
   return NextResponse.json(doc);
 }
+
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  await connectDB();
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader) {
+    return NextResponse.json({ error: "UnAuthorized" }, { status: 401 });
+  }
+
+  let decoded;
+  try {
+    const token = authHeader.replace("Bearer ", "");
+    decoded = await getAuth().verifyIdToken(token);
+  } catch {
+    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+  }
+
+  try {
+    const { blocks } = await req.json();
+    const { id } = await params;
+
+    const updated = await Document.findOneAndUpdate(
+      { _id: id, ownerId: decoded.uid },
+      {
+        blocks,
+        updatedAt: new Date(),
+      },
+      { new: true }
+    );
+
+    if (!updated) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    return NextResponse.json(updated, { status: 200 });
+  } catch (error) {
+    console.log("Error while saving document data", error);
+    return NextResponse.json(
+      { error: "Error occurred on server" },
+      { status: 500 }
+    );
+  }
+}
