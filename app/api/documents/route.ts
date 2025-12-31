@@ -16,7 +16,12 @@ export async function GET(req: Request) {
       sessionCookie,
       true
     );
-    const documents = await Document.find({ ownerId: decodedToken.uid })
+    const documents = await Document.find({
+      $or: [
+        { ownerId: decodedToken.uid },
+        { "sharedWith.userId": decodedToken.uid },
+      ],
+    })
       .sort({
         updatedAt: -1,
       })
