@@ -21,8 +21,9 @@ interface WSSharedDoc {
 
 mongoose.connect(process.env.MONGODB_URI || "");
 
-const wss = new WebSocketServer({ port: 3001 });
-console.log("WebSocketServer Runnig on ws://localhost:3001");
+const port = Number(process.env.PORT) || 3001;
+const wss = new WebSocketServer({ port });
+console.log(`WebSocketServer Running on port ${port}`);
 
 const docs = new Map<string, WSSharedDoc>();
 const initializingDocs = new Map<string, Promise<WSSharedDoc>>();
