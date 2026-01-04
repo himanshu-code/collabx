@@ -17,6 +17,8 @@ export interface EditorData {
 const EditorLayout = ({ editorData }: { editorData: EditorData }) => {
   const [command, setCommand] = useState<EditorCommand | null>(null);
   const [openShare, setOpenShare] = useState<boolean>(false);
+  const [activeUsers, setActiveUsers] = useState<any[]>([]);
+
   return (
     <Box
       sx={{
@@ -26,7 +28,11 @@ const EditorLayout = ({ editorData }: { editorData: EditorData }) => {
         bgcolor: "background.paper",
       }}
     >
-      <EditorTopBar onCommand={setCommand} onShareClick={setOpenShare} />
+      <EditorTopBar
+        onCommand={setCommand}
+        onShareClick={setOpenShare}
+        activeUsers={activeUsers}
+      />
       <ShareModal
         open={openShare}
         onClose={() => setOpenShare(false)}
@@ -35,7 +41,11 @@ const EditorLayout = ({ editorData }: { editorData: EditorData }) => {
       <Typography variant="h4" sx={{ px: { xs: 2, md: 4 }, pt: 2, pb: 1 }}>
         {editorData.title}
       </Typography>
-      <EditorBody editorData={editorData} command={command} />
+      <EditorBody
+        editorData={editorData}
+        command={command}
+        onUsersChange={setActiveUsers}
+      />
     </Box>
   );
 };

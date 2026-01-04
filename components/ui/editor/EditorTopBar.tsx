@@ -44,9 +44,11 @@ export type EditorCommand =
 const EditorTopBar = ({
   onCommand,
   onShareClick,
+  activeUsers = [],
 }: {
   onCommand: (cmd: EditorCommand) => void;
   onShareClick: (openShare: boolean) => void;
+  activeUsers?: any[];
 }) => {
   const toggleSx = {
     border: "none",
@@ -228,10 +230,24 @@ const EditorTopBar = ({
             borderColor: "divider",
           }}
         >
-          <AvatarGroup max={3} spacing="small">
-            <Avatar alt="Cindy Baker" src="/static/images/avatar/3.jpg" />
-            <Avatar alt="Agnes Walker" src="/static/images/avatar/4.jpg" />
-            <Avatar alt="Trevor Henderson" src="/static/images/avatar/5.jpg" />
+          <AvatarGroup max={4} spacing="small">
+            {activeUsers.map((u) => (
+              <Tooltip key={u.clientID} title={u.name} arrow>
+                <Avatar
+                  alt={u.name}
+                  src={u.photo}
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    fontSize: 14,
+                    bgcolor: u.color,
+                    border: `2px solid ${u.color} !important`,
+                  }}
+                >
+                  {u.name[0]}
+                </Avatar>
+              </Tooltip>
+            ))}
           </AvatarGroup>
         </Box>
         <Box
