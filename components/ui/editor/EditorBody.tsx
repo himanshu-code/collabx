@@ -230,9 +230,6 @@ const EditorBody = ({
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [activeUsers, setActiveUsersInternal] = useState<any[]>([]);
   const pendingFocusId = useRef<string | null>(null);
-  // const saveTimerRef = useRef<number | null>(null);
-  // const lastSavedRef = useRef<string>("");
-  // const isSavingRef = useRef(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
   const yDocRef = useRef<Y.Doc | null>(null);
@@ -265,7 +262,6 @@ const EditorBody = ({
   };
 
   const handleBlockChange = (id: string, content: string) => {
-    // setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, content } : b)));
     if (!yDocRef.current) return;
 
     const yBlocks = yDocRef.current.getArray<Block>("blocks");
@@ -306,54 +302,9 @@ const EditorBody = ({
         yBlocks.delete(index);
       });
     }
-    // setBlocks((prev) => {
-    //   if (prev.length == 1) return [{ ...prev[0], content: "" }];
-
-    //   const index = prev.findIndex((b) => b.id === id);
-    //   const nextFocus = prev[index - 1]?.id || prev[index + 1]?.id || null;
-    //   pendingFocusId.current = nextFocus;
-
-    //   return prev.filter((b) => b.id !== id);
-    // });
   };
 
-  // const saveBlock = async (blocksToSave: Block[]) => {
-  //   if (!editorData?._id) return;
-  //   const auth = getAuth();
-  //   const user = auth.currentUser;
-  //   if (!user) return;
-  //   const payload = JSON.stringify(blocksToSave);
-  //   if (payload === lastSavedRef.current) {
-  //     return;
-  //   }
 
-  //   try {
-  //     isSavingRef.current = true;
-
-  //     const res = await fetch(`/api/documents/${editorData._id}`, {
-  //       method: "PUT",
-  //       headers: {
-  //         "Content-type": "application/json",
-  //       },
-  //       body: JSON.stringify({ blocks: blocksToSave }),
-  //     });
-
-  //     if (res.status === 401) {
-  //       window.location.href = "/login";
-  //       return;
-  //     }
-
-  //     if (res.ok) {
-  //       lastSavedRef.current = payload;
-  //     } else {
-  //       console.error("Save Failed", await res.text());
-  //     }
-  //   } catch (error) {
-  //     console.error("Save err", error);
-  //   } finally {
-  //     isSavingRef.current = false;
-  //   }
-  // };
 
   useEffect(() => {
     if (!editorData?._id) {
@@ -361,7 +312,7 @@ const EditorBody = ({
     }
     const ydoc = new Y.Doc();
     yDocRef.current = ydoc;
-    const provider = new WebsocketProvider("ws://localhost:3001", editorData._id, ydoc);
+    const provider = new WebsocketProvider(process.env.NEXT_PUBLIC_WS_SERVER_URL!, editorData._id, ydoc);
     providerRef.current = provider;
     const yBlocks = ydoc.getArray("blocks");
     const observer = () => {
@@ -441,10 +392,7 @@ const EditorBody = ({
     }
   }, [activeBlockId])
 
-  // Removed: This overrides the collaborative state with initial data, causing sync issues.
-  // useEffect(() => {
-  //   if (editorData?.blocks) setBlocks(editorData.blocks);
-  // }, [editorData]);
+
 
 
 
@@ -468,46 +416,6 @@ const EditorBody = ({
       }
     }
   }, [command]);
-
-  // useEffect(() => {
-  //   if (!pendingFocusId.current) return;
-  //   const id = pendingFocusId.current;
-  //   requestAnimationFrame(() => {
-  //     const el = document.querySelector(
-  //       `[data-block-id="${id}"]`
-  //     ) as HTMLElement | null;
-  //     if (!el) return;
-
-  //     el?.focus();
-  //     const range = document.createRange();
-  //     range.selectNodeContents(el);
-  //     range.collapse(false);
-  //     const sel = window.getSelection();
-  //     sel?.removeAllRanges();
-  //     sel?.addRange(range);
-  //     pendingFocusId.current = null;
-  //   });
-  // }, [blocks]);
-
-
-
-  // useEffect(() => {
-  //   if (!blocks.length) return;
-
-  //   if (saveTimerRef.current) {
-  //     clearTimeout(saveTimerRef.current);
-  //   }
-
-  //   saveTimerRef.current = window.setTimeout(() => {
-  //     saveBlock(blocks);
-  //   }, 1000);
-
-  //   return () => {
-  //     if (saveTimerRef.current) {
-  //       clearTimeout(saveTimerRef.current);
-  //     }
-  //   };
-  // }, [blocks]);
 
   return (
     <Box sx={{ px: 4, py: 3 }}>
