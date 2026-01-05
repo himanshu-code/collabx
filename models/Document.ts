@@ -20,6 +20,7 @@ const DocumentSchema = new Schema(
     ownerId: { type: String, required: true },
     sharedWith: { type: [SharedUserSchema], default: [] },
     blocks: { type: [BlockSchema], default: [] },
+    yjsState: { type: Buffer },
   },
   { timestamps: true }
 );

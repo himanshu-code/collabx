@@ -4,6 +4,9 @@ import { useIsTouch } from "@/hooks/useIsTouch";
 import { type EditorData } from "./EditorLayout";
 import { EditorCommand } from "./EditorTopBar";
 import { getAuth } from "firebase/auth";
+import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
+
 
 type BlockType =
   | "paragraph"
@@ -31,9 +34,10 @@ const BlockInserter = ({ onAdd }: { onAdd: () => void }) => (
       cursor: "pointer",
       "&:hover": { opacity: 1 },
     }}
-    onClick={onAdd}
+
   >
     <Box
+      onClick={onAdd}
       sx={{
         width: 24,
         height: 24,
@@ -45,6 +49,7 @@ const BlockInserter = ({ onAdd }: { onAdd: () => void }) => (
         justifyContent: "center",
         fontSize: 18,
         userSelect: "none",
+
       }}
     >
       +
@@ -121,6 +126,7 @@ const EditorBlock = ({
       return (
         <Box
           {...common}
+          ref={divRef}
           sx={{
             borderLeft: "3px solid",
             borderColor: "divider",
@@ -202,7 +208,9 @@ const DraggableBlock = ({
           ⋮⋮
         </Box>
 
-        <Box sx={{ flex: 1 }}>{children}</Box>
+        <Box sx={{ flex: 1, position: "relative" }}>
+          {children}
+        </Box>
       </Box>
     </Box>
   );
@@ -211,19 +219,21 @@ const DraggableBlock = ({
 const EditorBody = ({
   editorData,
   command,
+  onUsersChange,
 }: {
   editorData: EditorData;
   command: EditorCommand | null;
+  onUsersChange?: (users: any[]) => void;
 }) => {
   const isTouch = useIsTouch();
-  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [blocks, setBlocks] = useState<Block[]>(editorData.blocks || []);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
+  const [activeUsers, setActiveUsersInternal] = useState<any[]>([]);
   const pendingFocusId = useRef<string | null>(null);
-  const saveTimerRef = useRef<number | null>(null);
-  const lastSavedRef = useRef<string>("");
-  const isSavingRef = useRef(false);
-
   const [draggedId, setDraggedId] = useState<string | null>(null);
+
+  const yDocRef = useRef<Y.Doc | null>(null);
+  const providerRef = useRef<WebsocketProvider | null>(null);
 
   const handleDragStart = (id: string) => {
     setDraggedId(id);
@@ -234,61 +244,157 @@ const EditorBody = ({
   };
 
   const handleDrop = (targetId: string) => {
-    if (!draggedId || draggedId === targetId) return;
+    if (!draggedId || draggedId === targetId || !yDocRef.current) return;
 
-    setBlocks((prev) => {
-      const from = prev.findIndex((b) => b.id === draggedId);
-      const to = prev.findIndex((b) => b.id === targetId);
-      if (from === -1 || to === -1) return prev;
+    const yBlocks = yDocRef.current.getArray<Block>("blocks");
+    const allBlocks = yBlocks.toArray();
+    const from = allBlocks.findIndex((b) => b.id === draggedId);
+    const to = allBlocks.findIndex((b) => b.id === targetId);
 
-      const updated = [...prev];
-      const [moved] = updated.splice(from, 1);
-      updated.splice(to, 0, moved);
-      return updated;
-    });
-
-    pendingFocusId.current = draggedId;
+    if (from !== -1 && to !== -1) {
+      yDocRef.current.transact(() => {
+        const movedBlock = yBlocks.get(from);
+        yBlocks.delete(from);
+        yBlocks.insert(to, [movedBlock]);
+      });
+    }
     setDraggedId(null);
   };
 
-  useEffect(() => {
-    if (editorData?.blocks) setBlocks(editorData.blocks);
-  }, [editorData]);
+  const handleBlockChange = (id: string, content: string) => {
+    if (!yDocRef.current) return;
 
-  const handleBlockChange = (id: string, content: string) =>
-    setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, content } : b)));
+    const yBlocks = yDocRef.current.getArray<Block>("blocks");
+    const index = yBlocks.toArray().findIndex((b) => b.id === id);
+    if (index !== -1) {
+      yDocRef.current.transact(() => {
+        const block = yBlocks.get(index);
+        yBlocks.delete(index);
+        yBlocks.insert(index, [{ ...block, content }])
+      });
+    }
+  }
 
   const insertBlockAfter = (afterId: string, type: BlockType = "paragraph") => {
-    const newId = crypto.randomUUID();
+    if (!yDocRef.current) return;
 
-    setBlocks((prev) => {
-      const index = prev.findIndex((b) => b.id === afterId);
-      if (index === -1) return prev;
-
+    const yBlocks = yDocRef.current.getArray<Block>("blocks");
+    const index = yBlocks.toArray().findIndex((b) => b.id === afterId);
+    if (index !== -1) {
       const newBlock: Block = {
-        id: newId,
-        type,
-        content: "",
-      };
 
-      const updated = [...prev];
-      updated.splice(index + 1, 0, newBlock);
-      return updated;
-    });
-    pendingFocusId.current = newId;
+        id: crypto.randomUUID(),
+        type,
+        content: ""
+      };
+      yDocRef.current.transact(() => {
+        yBlocks.insert(index + 1, [newBlock]);
+      })
+    }
   };
 
   const deleteBlock = (id: string) => {
-    setBlocks((prev) => {
-      if (prev.length == 1) return [{ ...prev[0], content: "" }];
-
-      const index = prev.findIndex((b) => b.id === id);
-      const nextFocus = prev[index - 1]?.id || prev[index + 1]?.id || null;
-      pendingFocusId.current = nextFocus;
-
-      return prev.filter((b) => b.id !== id);
-    });
+    if (!yDocRef.current) return;
+    const yBlocks = yDocRef.current.getArray<Block>("blocks");
+    const index = yBlocks.toArray().findIndex((b) => b.id === id);
+    if (index !== -1) {
+      yDocRef.current.transact(() => {
+        yBlocks.delete(index);
+      });
+    }
   };
+
+
+
+  useEffect(() => {
+    if (!editorData?._id) {
+      return;
+    }
+    const ydoc = new Y.Doc();
+    yDocRef.current = ydoc;
+    const provider = new WebsocketProvider(process.env.NEXT_PUBLIC_WS_SERVER_URL!, editorData._id, ydoc);
+    providerRef.current = provider;
+    const yBlocks = ydoc.getArray("blocks");
+    const observer = () => {
+      const currentBlocks = yBlocks.toArray() as Block[];
+      if (currentBlocks.length > 0) {
+        setBlocks(currentBlocks);
+      }
+    };
+    yBlocks.observe(observer);
+
+    // Initial sync
+    provider.on("sync", (isSynced: boolean) => {
+      if (isSynced) {
+        const syncedBlocks = yBlocks.toArray() as Block[];
+        if (syncedBlocks.length > 0) {
+          setBlocks(syncedBlocks);
+        }
+      }
+    });
+
+    // Awareness handling
+    const auth = getAuth();
+    const user = auth.currentUser;
+    const name = user?.displayName || user?.email?.split("@")[0] || "Anonymous";
+    const photo = user?.photoURL || "";
+    const color = "#" + Math.floor(Math.random() * 16777215).toString(16);
+
+    provider.awareness.setLocalStateField("user", {
+      name,
+      photo,
+      color,
+      focusedId: activeBlockId,
+    });
+
+    const awarenessObserver = () => {
+      const states = provider.awareness.getStates();
+      const users: any[] = [];
+      states.forEach((state: any, clientID) => {
+        if (state.user) {
+          users.push({
+            clientID,
+            ...state.user,
+          });
+        }
+      });
+      if (onUsersChange) {
+        onUsersChange(users);
+      }
+      setActiveUsersInternal(users);
+    };
+
+    provider.awareness.on("change", awarenessObserver);
+
+    return () => {
+      yBlocks.unobserve(observer);
+      provider.awareness.off("change", awarenessObserver);
+      provider.destroy();
+      ydoc.destroy();
+    };
+  }, [editorData._id, onUsersChange])
+
+
+
+  useEffect(() => {
+    if (providerRef.current) {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      const name = user?.displayName || user?.email?.split("@")[0] || "Anonymous";
+      const photo = user?.photoURL || "";
+
+      providerRef.current.awareness.setLocalStateField("user", {
+        name,
+        photo,
+        color: providerRef.current.awareness.getLocalState()?.user?.color || "#" + Math.floor(Math.random() * 16777215).toString(16),
+        focusedId: activeBlockId,
+      });
+    }
+  }, [activeBlockId])
+
+
+
+
 
   useEffect(() => {
     if (!command || !activeBlockId) return;
@@ -298,90 +404,18 @@ const EditorBody = ({
     } else if (command.type === "insertLink") {
       const url = prompt("Enter URL");
       if (url) document.execCommand("createLink", false, url);
-    } else {
-      setBlocks((prev) =>
-        prev.map((b) =>
-          b.id === activeBlockId ? { ...b, type: command.type as BlockType } : b
-        )
-      );
+    } else if (activeBlockId && yDocRef.current) {
+      const yBlocks = yDocRef.current.getArray<Block>("blocks");
+      const index = yBlocks.toArray().findIndex((b) => b.id === activeBlockId);
+      if (index !== -1) {
+        yDocRef.current.transact(() => {
+          const block = yBlocks.get(index);
+          yBlocks.delete(index);
+          yBlocks.insert(index, [{ ...block, type: command.type as BlockType }]);
+        });
+      }
     }
   }, [command]);
-
-  useEffect(() => {
-    if (!pendingFocusId.current) return;
-    const id = pendingFocusId.current;
-    requestAnimationFrame(() => {
-      const el = document.querySelector(
-        `[data-block-id="${id}"]`
-      ) as HTMLElement | null;
-      if (!el) return;
-
-      el?.focus();
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      range.collapse(false);
-      const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(range);
-      pendingFocusId.current = null;
-    });
-  }, [blocks]);
-
-  const saveBlock = async (blocksToSave: Block[]) => {
-    if (!editorData?._id) return;
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (!user) return;
-    const payload = JSON.stringify(blocksToSave);
-    if (payload === lastSavedRef.current) {
-      return;
-    }
-
-    try {
-      isSavingRef.current = true;
-
-      const res = await fetch(`/api/documents/${editorData._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-type": "application/json",
-        },
-        body: JSON.stringify({ blocks: blocksToSave }),
-      });
-
-      if (res.status === 401) {
-        window.location.href = "/login";
-        return;
-      }
-
-      if (res.ok) {
-        lastSavedRef.current = payload;
-      } else {
-        console.error("Save Failed", await res.text());
-      }
-    } catch (error) {
-      console.error("Save err", error);
-    } finally {
-      isSavingRef.current = false;
-    }
-  };
-
-  useEffect(() => {
-    if (!blocks.length) return;
-
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-    }
-
-    saveTimerRef.current = window.setTimeout(() => {
-      saveBlock(blocks);
-    }, 1000);
-
-    return () => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-      }
-    };
-  }, [blocks]);
 
   return (
     <Box sx={{ px: 4, py: 3 }}>
@@ -416,7 +450,7 @@ const EditorBody = ({
                         key={item.id}
                         block={item}
                         onDragStart={handleDragStart}
-                        onDragOver={() => {}}
+                        onDragOver={() => { }}
                         onDrop={handleDrop}
                         isTouch={isTouch}
                       >
@@ -430,6 +464,29 @@ const EditorBody = ({
                           }}
                           onInsertAfter={insertBlockAfter}
                         />
+                        {/* Remote user indicators */}
+                        {activeUsers
+                          .filter((u) => u.focusedId === item.id && u.clientID !== yDocRef.current?.clientID)
+                          .map((u) => (
+                            <Box
+                              key={u.clientID}
+                              sx={{
+                                position: "absolute",
+                                left: -8,
+                                top: -14,
+                                bgcolor: u.color,
+                                color: "white",
+                                fontSize: "10px",
+                                px: 0.5,
+                                borderRadius: 1,
+                                zIndex: 1,
+                                pointerEvents: "none",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {u.name} is editing...
+                            </Box>
+                          ))}
                       </DraggableBlock>
                     ))}
                   </Box>
@@ -442,7 +499,7 @@ const EditorBody = ({
                   <DraggableBlock
                     block={block}
                     onDragStart={handleDragStart}
-                    onDragOver={() => {}}
+                    onDragOver={() => { }}
                     onDrop={handleDrop}
                     isTouch={isTouch}
                   >
@@ -456,6 +513,29 @@ const EditorBody = ({
                       }}
                       onInsertAfter={insertBlockAfter}
                     />
+                    {/* Remote user indicators */}
+                    {activeUsers
+                      .filter((u) => u.focusedId === block.id && u.clientID !== yDocRef.current?.clientID)
+                      .map((u) => (
+                        <Box
+                          key={u.clientID}
+                          sx={{
+                            position: "absolute",
+                            left: -8,
+                            top: -14,
+                            bgcolor: u.color,
+                            color: "white",
+                            fontSize: "10px",
+                            px: 0.5,
+                            borderRadius: 1,
+                            zIndex: 1,
+                            pointerEvents: "none",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {u.name} is editing...
+                        </Box>
+                      ))}
                   </DraggableBlock>
 
                   <BlockInserter onAdd={() => insertBlockAfter(block.id)} />
