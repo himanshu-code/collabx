@@ -217,13 +217,17 @@ const DraggableBlock = ({
 };
 
 const EditorBody = ({
+  docTitle,
   editorData,
   command,
   onUsersChange,
+  onTitleChange,
 }: {
+  docTitle: string;
   editorData: EditorData;
   command: EditorCommand | null;
   onUsersChange?: (users: any[]) => void;
+  onTitleChange?: (title: string) => void;
 }) => {
   const isTouch = useIsTouch();
   const [blocks, setBlocks] = useState<Block[]>(editorData.blocks || []);
@@ -231,7 +235,7 @@ const EditorBody = ({
   const [activeUsers, setActiveUsersInternal] = useState<any[]>([]);
   const pendingFocusId = useRef<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
-
+  const [isSynced, setIsSynced] = useState(false)
   const yDocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<WebsocketProvider | null>(null);
 
@@ -315,6 +319,13 @@ const EditorBody = ({
     const provider = new WebsocketProvider(process.env.NEXT_PUBLIC_WS_SERVER_URL!, editorData._id, ydoc);
     providerRef.current = provider;
     const yBlocks = ydoc.getArray("blocks");
+    const yTitle = ydoc.getText("title");
+    const titileObserver = () => {
+      if (onTitleChange) {
+        onTitleChange(yTitle.toString());
+      }
+    };
+    yTitle.observe(titileObserver);
     const observer = () => {
       const currentBlocks = yBlocks.toArray() as Block[];
       if (currentBlocks.length > 0) {
@@ -326,6 +337,7 @@ const EditorBody = ({
     // Initial sync
     provider.on("sync", (isSynced: boolean) => {
       if (isSynced) {
+        setIsSynced(true);
         const syncedBlocks = yBlocks.toArray() as Block[];
         if (syncedBlocks.length > 0) {
           setBlocks(syncedBlocks);
@@ -367,6 +379,7 @@ const EditorBody = ({
     provider.awareness.on("change", awarenessObserver);
 
     return () => {
+      yTitle.unobserve(titileObserver);
       yBlocks.unobserve(observer);
       provider.awareness.off("change", awarenessObserver);
       provider.destroy();
@@ -374,7 +387,17 @@ const EditorBody = ({
     };
   }, [editorData._id, onUsersChange])
 
+  useEffect(() => {
+    if (!yDocRef.current || !isSynced) return;
 
+    const yTitle = yDocRef.current.getText("title");
+    if (yTitle.toString() !== docTitle) {
+      yDocRef.current.transact(() => {
+        yTitle.delete(0, yTitle.length);
+        yTitle.insert(0, docTitle);
+      });
+    }
+  }, [docTitle]);
 
   useEffect(() => {
     if (providerRef.current) {
@@ -418,7 +441,7 @@ const EditorBody = ({
   }, [command]);
 
   return (
-    <Box sx={{ px: 4, py: 3 }}>
+    <Box sx={{ px: 4, py: 3, overflowY: "auto" }}>
       <Box sx={{ maxWidth: 720, mx: "auto" }}>
         {(() => {
           const rendered: React.ReactNode[] = [];

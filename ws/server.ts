@@ -99,19 +99,27 @@ async function loadFromMongo(docId: string, ydoc: Y.Doc) {
             // Apply preserved Yjs state to avoid re-creating operations (prevents duplication)
             Y.applyUpdate(ydoc, new Uint8Array(doc.yjsState));
             console.log(`Loaded Document ${docId} from yjsState metadata`);
-        } else if (doc.blocks && doc.blocks.length > 0) {
-            // Fallback for documents that only have the blocks array (initial load)
-            const Yblocks = ydoc.getArray("blocks");
-            ydoc.transact(() => {
-                const plainBlocks = JSON.parse(JSON.stringify(doc.blocks));
-                const cleanedBlocks = plainBlocks.map((b: any) => {
-                    delete b._id;
-                    return b;
+        } else {
+            if (doc.title) {
+                const yTitle = ydoc.getText("title");
+                yTitle.insert(0, doc.title);
+            }
+            if (doc.blocks && doc.blocks.length > 0) {
+                // Fallback for documents that only have the blocks array (initial load)
+                const Yblocks = ydoc.getArray("blocks");
+                ydoc.transact(() => {
+                    const plainBlocks = JSON.parse(JSON.stringify(doc.blocks));
+                    const cleanedBlocks = plainBlocks.map((b: any) => {
+                        delete b._id;
+                        return b;
+                    });
+                    Yblocks.push(cleanedBlocks);
                 });
-                Yblocks.push(cleanedBlocks);
-            });
-            console.log(`Loaded Document ${docId} from blocks array fallback`);
+                console.log(`Loaded Document ${docId} from blocks array fallback`);
+            }
+
         }
+
     }
     catch (error) {
         console.error(`Error loading document from mongo`, error);
@@ -121,6 +129,7 @@ async function loadFromMongo(docId: string, ydoc: Y.Doc) {
 async function saveToMongo(docId: string, ydoc: Y.Doc) {
     try {
         const yBlocks = ydoc.getArray("blocks");
+        const title = ydoc.getText("title").toString();
         const blocks = yBlocks.toArray().map((b: any) => {
             const { _id, ...rest } = b;
             return rest;
@@ -128,7 +137,7 @@ async function saveToMongo(docId: string, ydoc: Y.Doc) {
 
         // Save both the readable blocks and the binary Yjs state
         const yjsState = Buffer.from(Y.encodeStateAsUpdate(ydoc));
-        await Document.findByIdAndUpdate(docId, { blocks, yjsState });
+        await Document.findByIdAndUpdate(docId, { blocks, yjsState, title });
         console.log(`Saved Document ${docId} to mongoDB (with Yjs state)`);
     }
     catch (error) {
